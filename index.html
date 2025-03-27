@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>01Encrypter</title>
+    <script>
+        const i18n = {
+            'zh-CN': {
+                title: '01加密器',
+                introTitle: '加密器介绍',
+                intro1: '本工具可将文本与自定义字符组成的字符串相互转换。程序完全在本地运行，不会上传数据。',
+                warning: '声明：本工具仅供娱乐，不适用于任何安全需求。',
+                encryptTitle: '加密',
+                decryptTitle: '解密',
+                placeholderEncrypt: '输入待加密文字',
+                placeholderDecrypt: '输入待解密文字',
+                copy: '复制',
+                copied: '已复制',
+                map0: '0对应字符：',
+                map1: '1对应字符：',
+                github: 'GitHub仓库',
+                invalidMap: '映射字符必须为单个不同字符'
+            },
+            'en-US': {
+                title: '01Encrypter',
+                introTitle: 'Introduction',
+                intro1: 'This tool converts text to/from custom binary representation. All processing happens locally.',
+                warning: 'Disclaimer: For entertainment only, not for security purposes.',
+                encryptTitle: 'Encrypt',
+                decryptTitle: 'Decrypt', 
+                placeholderEncrypt: 'Enter text to encrypt',
+                placeholderDecrypt: 'Enter text to decrypt',
+                copy: 'Copy',
+                copied: 'Copied',
+                map0: '0 mapping:',
+                map1: '1 mapping:',
+                github: 'GitHub Repo',
+                invalidMap: 'Mapping characters must be single and different'
+            }
+        };
+
+        let currentLang = navigator.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+        let copyTimeout;
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (el.placeholder) {
+                    el.placeholder = i18n[lang][key];
+                } else if (el.tagName === 'TEXTAREA') {
+                    el.placeholder = i18n[lang][key];
+                } else {
+                    el.textContent = i18n[lang][key];
+                }
+            });
+        }
+
+        function encryptText(str) {
+            const map0 = document.getElementById('map0').value.trim() || '0';
+            const map1 = document.getElementById('map1').value.trim() || '1';
+            
+            if (map0.length !== 1 || map1.length !== 1 || map0 === map1) {
+                alert(i18n[currentLang].invalidMap);
+                return '';
+            }
+
+            const binary = Array.from(str).map(char => 
+                char.charCodeAt(0).toString(2).padStart(16, '0')
+            ).join('');
+            
+            return map0 + map1 + binary
+                .replaceAll("0", map0)
+                .replaceAll("1", map1);
+        }
+
+        function decryptText(encoded) {
+            if (encoded.length < 2) return '';
+            
+            const map = {
+                0: encoded[0],
+                1: encoded[1]
+            };
+            
+            const body = encoded.slice(2);
+            const binary = body.replace(new RegExp(escapeRegExp(map[0]), 'g'), '0')
+                              .replace(new RegExp(escapeRegExp(map[1]), 'g'), '1');
+            
+            return binary.match(/.{1,16}/g)?.map(bin => 
+                String.fromCharCode(parseInt(bin, 2))
+            ).join('') || '';
+        }
+
+        function copy(text, btn) {
+            if (!text) return;
+            
+            clearTimeout(copyTimeout);
+            const originalText = btn.textContent;
+            btn.textContent = i18n[currentLang].copied;
+            copyTimeout = setTimeout(() => {
+                btn.textContent = originalText;
+            }, 1000);
+
+            navigator.clipboard.writeText(text).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            });
+        }
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        window.onload = () => {
+            setLanguage(currentLang);
+            document.getElementById('map0').value = '0';
+            document.getElementById('map1').value = '1';
+            
+            // 自动清除placeholder
+            document.querySelectorAll('textarea').forEach(ta => {
+                ta.addEventListener('input', function() {
+                    this.removeAttribute('placeholder');
+                });
+            });
+        };
+    </script>
+    <style>
+        :root {
+            --padding: 1rem;
+            --margin: 0.5rem;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            font-family: system-ui;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--padding);
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin: var(--margin) 0;
+            padding: 0.5rem;
+            box-sizing: border-box;
+        }
+        textarea::placeholder {
+            color: #999;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            margin: var(--margin);
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+        .language-switcher {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+        }
+        .map-input {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .map-input input {
+            width: 100%;
+            padding: 0.5rem;
+            text-align: center;
+        }
+        details {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <div class="language-switcher">
+            <button onclick="setLanguage('zh-CN')">中文</button>
+            <button onclick="setLanguage('en-US')">English</button>
+        </div>
+
+        <article>
+            <details open>
+                <summary data-i18n="introTitle"></summary>
+                <p data-i18n="intro1"></p>
+                <p>
+                    <strong data-i18n="warning"></strong>
+                    <a href="https://github.com/gitmichaelqiu/01Encrypter">
+                        <img src="https://flat.badgen.net/badge/github/01Encrypter?icon=github" data-i18n="github">
+                    </a>
+                </p>
+            </details>
+        </article>
+
+        <div class="grid">
+            <article>
+                <h2 data-i18n="encryptTitle"></h2>
+                <div class="map-input">
+                    <div>
+                        <input id="map0" type="text" maxlength="1" required>
+                        <label data-i18n="map0"></label>
+                    </div>
+                    <div>
+                        <input id="map1" type="text" maxlength="1" required>
+                        <label data-i18n="map1"></label>
+                    </div>
+                </div>
+                <textarea id="encryption" data-i18n="placeholderEncrypt"></textarea>
+                <button onclick="encryption_result.value=encryptText(encryption.value)">
+                    <span data-i18n="encryptTitle"></span>
+                </button>
+                <button onclick="copy(encryption_result.value, this)" data-i18n="copy"></button>
+                <textarea id="encryption_result" readonly></textarea>
+            </article>
+
+            <article>
+                <h2 data-i18n="decryptTitle"></h2>
+                <textarea id="decrypt" data-i18n="placeholderDecrypt"></textarea>
+                <button onclick="decrypt_result.value=decryptText(decrypt.value)">
+                    <span data-i18n="decryptTitle"></span>
+                </button>
+                <button onclick="copy(decrypt_result.value, this)" data-i18n="copy"></button>
+                <textarea id="decrypt_result" readonly></textarea>
+            </article>
+        </div>
+    </main>
+</body>
+</html>
